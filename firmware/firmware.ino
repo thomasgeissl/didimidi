@@ -1,19 +1,21 @@
 //tools/USB type: Serial + MIDI
 #include "Wire.h"
 #include "USBHost_t36.h" //https://github.com/PaulStoffregen/USBHost_t36.git
-#include <JC_Button.h> //https://github.com/JChristensen/JC_Button
+#include <MIDI.h> //https://github.com/FortySevenEffects/arduino_midi_library.git
+#include <JC_Button.h> //https://github.com/JChristensen/JC_Button.git
 
 #include "./defines.h"
 #include "./Slot.h"
 #include "./Trigger.h"
 
-//TODO: which modes makes sense?
+//TODO: which modes make sense?
 enum Mode {
   CHANNELTOSLOT = 0,
   POLYNEXT,
   POLYRANDOM,
   MAPPED
 };
+MIDI_CREATE_DEFAULT_INSTANCE();
 
 // inputs
 USBHost _usbHost;
@@ -43,13 +45,32 @@ void setup() {
 
 
 
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+  MIDI.setHandleNoteOn(onNoteOn);
+  MIDI.setHandleNoteOff(onNoteOff);
+  MIDI.setHandleAfterTouchPoly(onAfterTouchPoly);
+  MIDI.setHandleControlChange(onControlChange);
+  MIDI.setHandleProgramChange(onProgramChange);
+//  MIDI.setHandleAfterTouch(onAfterTouch);
+//  MIDI.setHandlePitchChange(onPitchChange);
+  MIDI.setHandleSystemExclusive(onSystemExclusiveChunk);
+  MIDI.setHandleTimeCodeQuarterFrame(onTimeCodeQuarterFrame);
+  MIDI.setHandleSongPosition(onSongPosition);
+  MIDI.setHandleSongSelect(onSongSelect);
+  MIDI.setHandleTuneRequest(onTuneRequest);
+  MIDI.setHandleClock(onClock);
+  MIDI.setHandleStart(onStart);
+  MIDI.setHandleContinue(onContinue);
+  MIDI.setHandleStop(onStop);
+  MIDI.setHandleActiveSensing(onActiveSensing);
+  MIDI.setHandleSystemReset(onSystemReset);
+//  MIDI.setHandleRealTimeSystem(onRealTimeSystem);
 
 
   _usbHost.begin();
-  _midiHost.setHandleNoteOff(OnNoteOff);
-  _midiHost.setHandleNoteOn(OnNoteOn);
+  _midiHost.setHandleNoteOff(onNoteOff);
+  _midiHost.setHandleNoteOn(onNoteOn);
   _midiHost.setHandleAfterTouchPoly(onAfterTouchPoly);
-  _midiHost.setHandleControlChange(OnControlChange);
   _midiHost.setHandleControlChange(onControlChange);
   _midiHost.setHandleProgramChange(onProgramChange);
   _midiHost.setHandleAfterTouch(onAfterTouch);
@@ -68,8 +89,8 @@ void setup() {
   _midiHost.setHandleRealTimeSystem(onRealTimeSystem);
 
 
-  usbMIDI.setHandleNoteOff(OnNoteOff);
-  usbMIDI.setHandleNoteOn(OnNoteOn);
+  usbMIDI.setHandleNoteOff(onNoteOff);
+  usbMIDI.setHandleNoteOn(onNoteOn);
   usbMIDI.setHandleAfterTouchPoly(onAfterTouchPoly);
   usbMIDI.setHandleControlChange(onControlChange);
   usbMIDI.setHandleProgramChange(onProgramChange);
@@ -95,6 +116,16 @@ void loop() {
     _slots[i].update();
   }
 
+  if (MIDI.read())
+  {
+    switch (MIDI.getType())
+    {
+      case midi::ProgramChange:
+        break;
+      default:
+        break;
+    }
+  }
   _usbHost.Task();
   _midiHost.read();
   usbMIDI.read();
@@ -109,7 +140,7 @@ void loop() {
   }
 }
 
-void OnNoteOn(byte channel, byte note, byte velocity)
+void onNoteOn(byte channel, byte note, byte velocity)
 {
   Serial.print("Note On, ch=");
   Serial.print(channel);
@@ -129,7 +160,7 @@ void OnNoteOn(byte channel, byte note, byte velocity)
   }
 }
 
-void OnNoteOff(byte channel, byte note, byte velocity)
+void onNoteOff(byte channel, byte note, byte velocity)
 {
   Serial.print("Note Off, ch=");
   Serial.print(channel);
@@ -149,7 +180,7 @@ void OnNoteOff(byte channel, byte note, byte velocity)
   }
 }
 
-void OnControlChange(byte channel, byte control, byte value)
+void onControlChange(byte channel, byte control, byte value)
 {
   Serial.print("Control Change, ch=");
   Serial.print(channel);
@@ -162,7 +193,6 @@ void OnControlChange(byte channel, byte control, byte value)
 
 
 void onAfterTouchPoly(byte channel, byte note, byte velocity) {}
-void onControlChange(byte channel, byte control, byte value) {}
 void onProgramChange(byte channel, byte program) {}
 void onAfterTouch(byte channel, byte pressure) {}
 void onPitchChange(byte channel, int pitch) {}
