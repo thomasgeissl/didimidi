@@ -12,3 +12,8 @@
 #define PIN_LED_SLOT3 31
 
 #define DEBOUNCETIME_BUTTON 20
+
+#define ADDRESS_DISPLAY 0x3C
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)

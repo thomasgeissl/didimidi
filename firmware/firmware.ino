@@ -3,6 +3,8 @@
 #include "USBHost_t36.h" //https://github.com/PaulStoffregen/USBHost_t36.git
 #include <MIDI.h> //https://github.com/FortySevenEffects/arduino_midi_library.git
 #include <JC_Button.h> //https://github.com/JChristensen/JC_Button.git
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h> //https://github.com/adafruit/Adafruit_SSD1306.git
 
 #include "./defines.h"
 #include "./Slot.h"
@@ -25,6 +27,8 @@ Button _confirmButton(PIN_CONFIRMBUTTON, DEBOUNCETIME_BUTTON);
 //TODO: rotary
 
 // outputs
+Adafruit_SSD1306 _display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
 Slot _slots[NUMBEROFSLOTS];
 Trigger _clock;
 
@@ -51,8 +55,8 @@ void setup() {
   MIDI.setHandleAfterTouchPoly(onAfterTouchPoly);
   MIDI.setHandleControlChange(onControlChange);
   MIDI.setHandleProgramChange(onProgramChange);
-//  MIDI.setHandleAfterTouch(onAfterTouch);
-//  MIDI.setHandlePitchChange(onPitchChange);
+  //  MIDI.setHandleAfterTouch(onAfterTouch);
+  //  MIDI.setHandlePitchChange(onPitchChange);
   MIDI.setHandleSystemExclusive(onSystemExclusiveChunk);
   MIDI.setHandleTimeCodeQuarterFrame(onTimeCodeQuarterFrame);
   MIDI.setHandleSongPosition(onSongPosition);
@@ -64,7 +68,7 @@ void setup() {
   MIDI.setHandleStop(onStop);
   MIDI.setHandleActiveSensing(onActiveSensing);
   MIDI.setHandleSystemReset(onSystemReset);
-//  MIDI.setHandleRealTimeSystem(onRealTimeSystem);
+  //  MIDI.setHandleRealTimeSystem(onRealTimeSystem);
 
 
   _usbHost.begin();
@@ -108,6 +112,14 @@ void setup() {
   usbMIDI.setHandleActiveSensing(onActiveSensing);
   usbMIDI.setHandleSystemReset(onSystemReset);
   usbMIDI.setHandleRealTimeSystem(onRealTimeSystem);
+
+  if (!_display.begin(SSD1306_SWITCHCAPVCC, ADDRESS_DISPLAY)) {
+    Serial.println(F("could not init display"));
+  }
+
+  // Show initial display buffer contents on the screen --
+  // the library initializes this with an Adafruit splash screen.
+  _display.display();
 }
 
 void loop() {
@@ -138,6 +150,18 @@ void loop() {
   if (_confirmButton.wasPressed()) {
 
   }
+
+  draw();
+}
+
+void draw() {
+  _display.clearDisplay();
+//  _display.drawLine(_display.width() - 1, 0, 0, i, SSD1306_WHITE);
+  _display.setTextSize(1); // Draw 2X-scale text
+  _display.setTextColor(SSD1306_WHITE);
+  _display.setCursor(0, 0);
+  _display.println(F("didimidi"));
+  _display.display();
 }
 
 void onNoteOn(byte channel, byte note, byte velocity)
