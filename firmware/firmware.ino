@@ -5,10 +5,14 @@
 #include <JC_Button.h> //https://github.com/JChristensen/JC_Button.git
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h> //https://github.com/adafruit/Adafruit_SSD1306.git
+#include <Encoder.h>
 
 #include "./defines.h"
 #include "./Slot.h"
 #include "./Trigger.h"
+
+#include "./Monitor.h"
+
 
 //TODO: which modes make sense?
 enum Mode {
@@ -22,9 +26,9 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 // inputs
 USBHost _usbHost;
 MIDIDevice _midiHost(_usbHost);
-Button _backButton(PIN_BACKBUTTON, DEBOUNCETIME_BUTTON);
-Button _confirmButton(PIN_CONFIRMBUTTON, DEBOUNCETIME_BUTTON);
-//TODO: rotary
+Button _backButton(PIN_BACKBUTTON, DEBOUNCETIME_BUTTON, true, true);
+Button _confirmButton(PIN_CONFIRMBUTTON, DEBOUNCETIME_BUTTON, true, true);
+Encoder _rotary(PIN_ROTARY_A, PIN_ROTARY_B);
 
 // outputs
 Adafruit_SSD1306 _display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -33,7 +37,8 @@ Slot _slots[NUMBEROFSLOTS];
 Trigger _clock;
 
 Mode _mode;
-
+Monitor _monitor;
+long _position  = 0;
 
 
 void setup() {
@@ -46,7 +51,8 @@ void setup() {
   _slots[2].begin(PIN_LED_SLOT2, 24, 25, 28, 29);
   _slots[3].begin(PIN_LED_SLOT3, 14, 15, 22, 23);
 
-
+  _confirmButton.begin();
+  _backButton.begin();
 
 
   MIDI.begin(MIDI_CHANNEL_OMNI);
@@ -116,9 +122,7 @@ void setup() {
   if (!_display.begin(SSD1306_SWITCHCAPVCC, ADDRESS_DISPLAY)) {
     Serial.println(F("could not init display"));
   }
-
-  // Show initial display buffer contents on the screen --
-  // the library initializes this with an Adafruit splash screen.
+  _display.clearDisplay();
   _display.display();
 }
 
@@ -141,27 +145,34 @@ void loop() {
   _usbHost.Task();
   _midiHost.read();
   usbMIDI.read();
+
   _backButton.read();
   _confirmButton.read();
 
   if (_backButton.wasPressed()) {
+    Serial.println("cancel button was pressed");
 
   }
   if (_confirmButton.wasPressed()) {
-
+    Serial.println("ok button was pressed");
   }
 
+  auto position = _rotary.read();
+  if (position != _position) {
+    Serial.println(position);
+    _position = position;
+  }
   draw();
 }
 
 void draw() {
-  _display.clearDisplay();
-//  _display.drawLine(_display.width() - 1, 0, 0, i, SSD1306_WHITE);
-  _display.setTextSize(1); // Draw 2X-scale text
-  _display.setTextColor(SSD1306_WHITE);
-  _display.setCursor(0, 0);
-  _display.println(F("didimidi"));
-  _display.display();
+  //  _display.clearDisplay();
+  ////  _display.drawLine(_display.width() - 1, 0, 0, i, SSD1306_WHITE);
+  //  _display.setTextSize(1); // Draw 2X-scale text
+  //  _display.setTextColor(SSD1306_WHITE);
+  //  _display.setCursor(0, 0);
+  //  _display.println(F("didimidi"));
+  //  _display.display();
 }
 
 void onNoteOn(byte channel, byte note, byte velocity)
@@ -213,6 +224,18 @@ void onControlChange(byte channel, byte control, byte value)
   Serial.print(", value=");
   Serial.print(value);
   Serial.println();
+
+  String text = "cc: ";
+  text += control;
+  text += ", value: ";
+  text += value;
+  _display.clearDisplay();
+  //  _display.drawLine(_display.width() - 1, 0, 0, i, SSD1306_WHITE);
+  _display.setTextSize(1); // Draw 2X-scale text
+  _display.setTextColor(SSD1306_WHITE);
+  _display.setCursor(0, 0);
+  _display.println(text);
+  _display.display();
 }
 
 

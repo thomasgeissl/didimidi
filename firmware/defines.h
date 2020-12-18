@@ -4,7 +4,8 @@
 #define PIN_CLOCK 33
 #define PIN_BACKBUTTON 32
 #define PIN_CONFIRMBUTTON 34
-#define PIN_ROTARY 35
+#define PIN_ROTARY_A 38
+#define PIN_ROTARY_B 39
 
 #define PIN_LED_SLOT0 26
 #define PIN_LED_SLOT1 27
