@@ -1,26 +1,28 @@
 //tools/USB type: Serial + MIDI
 #include "Wire.h"
+#include <SPI.h>
+#include <Encoder.h>
+#include <EEPROM.h>
+
 #include "USBHost_t36.h" //https://github.com/PaulStoffregen/USBHost_t36.git
 #include <MIDI.h> //https://github.com/FortySevenEffects/arduino_midi_library.git
 #include <JC_Button.h> //https://github.com/JChristensen/JC_Button.git
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h> //https://github.com/adafruit/Adafruit_SSD1306.git
-#include <Encoder.h>
+#include <DAC57X4.h> //https://github.com/laserlance/Arduino-Precision-DAC-AD57X4
+
+
 
 #include "./defines.h"
 #include "./Slot.h"
 #include "./Trigger.h"
+#include "./State.h"
 
+#include "./Display.h"
 #include "./Monitor.h"
 
+#include "./mcp4922.h"
 
-//TODO: which modes make sense?
-enum Mode {
-  CHANNELTOSLOT = 0,
-  POLYNEXT,
-  POLYRANDOM,
-  MAPPED
-};
+
+
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 // inputs
@@ -30,20 +32,38 @@ Button _backButton(PIN_BACKBUTTON, DEBOUNCETIME_BUTTON, true, true);
 Button _confirmButton(PIN_CONFIRMBUTTON, DEBOUNCETIME_BUTTON, true, true);
 Encoder _rotary(PIN_ROTARY_A, PIN_ROTARY_B);
 
+int _gateDacs[] = {PIN_DAC_0, PIN_DAC_1, PIN_DAC_2, PIN_DAC_3};
+
 // outputs
-Adafruit_SSD1306 _display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 Slot _slots[NUMBEROFSLOTS];
 Trigger _clock;
+Display _display;
 
-Mode _mode;
+State _state;
 Monitor _monitor;
 long _position  = 0;
+
+
+DAC57X4 _audioDacs[] = {DAC57X4(4, AD5754_VOLTAGE_SELECTION, PIN_DAC_4), DAC57X4(4, AD5754_VOLTAGE_SELECTION, PIN_DAC_5) };
 
 
 void setup() {
   Serial.begin(115200);
   Wire.begin();
+
+  pinMode(PIN_DAC_0, OUTPUT);
+  pinMode(PIN_DAC_1, OUTPUT);
+  pinMode(PIN_DAC_2, OUTPUT);
+  pinMode(PIN_DAC_3, OUTPUT);
+
+  digitalWrite(PIN_DAC_0, HIGH);
+  digitalWrite(PIN_DAC_1, HIGH);
+  digitalWrite(PIN_DAC_2, HIGH);
+  digitalWrite(PIN_DAC_3, HIGH);
+
+  SPI.begin();
+
 
   _clock.begin(PIN_CLOCK);
   _slots[0].begin(PIN_LED_SLOT0, 2, 3, 4, 5);
@@ -119,29 +139,31 @@ void setup() {
   usbMIDI.setHandleSystemReset(onSystemReset);
   usbMIDI.setHandleRealTimeSystem(onRealTimeSystem);
 
-  if (!_display.begin(SSD1306_SWITCHCAPVCC, ADDRESS_DISPLAY)) {
-    Serial.println(F("could not init display"));
-  }
-  _display.clearDisplay();
-  _display.display();
+  _display.begin();
+
 }
 
 void loop() {
+  //  setVoltage(PIN_DAC_0, 0, false, 1024 * 4 - 1);
+  //  delay(1000);
+  //  setVoltage(PIN_DAC_0, 0, false, 0);
+  //  delay(1000);
+
   _clock.update();
   for (auto i = 0; i < NUMBEROFSLOTS; i++) {
     _slots[i].update();
   }
 
-  if (MIDI.read())
-  {
-    switch (MIDI.getType())
-    {
-      case midi::ProgramChange:
-        break;
-      default:
-        break;
-    }
-  }
+  //  if (MIDI.read())
+  //  {
+  //    switch (MIDI.getType())
+  //    {
+  //      case midi::ProgramChange:
+  //        break;
+  //      default:
+  //        break;
+  //    }
+  //  }
   _usbHost.Task();
   _midiHost.read();
   usbMIDI.read();
@@ -162,7 +184,7 @@ void loop() {
     Serial.println(position);
     _position = position;
   }
-  draw();
+  _display.draw();
 }
 
 void draw() {
@@ -185,10 +207,11 @@ void onNoteOn(byte channel, byte note, byte velocity)
   Serial.print(velocity);
   Serial.println();
 
-  switch (_mode) {
-    case Mode::CHANNELTOSLOT: {
+  switch (_state.getMode().getId()) {
+    case 0: {
         if (channel < NUMBEROFSLOTS) {
           _slots[channel].setNoteOn(note, velocity);
+          setVoltage(PIN_DAC_0, 0, false, map(note, 0, 127, 0, 1024 * 4 - 1));
         }
         break;
       }
@@ -205,14 +228,14 @@ void onNoteOff(byte channel, byte note, byte velocity)
   //Serial.print(velocity);
   Serial.println();
 
-  switch (_mode) {
-    case Mode::CHANNELTOSLOT: {
-        if (channel < NUMBEROFSLOTS) {
-          _slots[channel].setNoteOff(note, velocity);
-        }
-        break;
-      }
-  }
+  //  switch (_mode) {
+  //    case Mode::CHANNELTOSLOT: {
+  //        if (channel < NUMBEROFSLOTS) {
+  //          _slots[channel].setNoteOff(note, velocity);
+  //        }
+  //        break;
+  //      }
+  //  }
 }
 
 void onControlChange(byte channel, byte control, byte value)
@@ -229,13 +252,8 @@ void onControlChange(byte channel, byte control, byte value)
   text += control;
   text += ", value: ";
   text += value;
-  _display.clearDisplay();
-  //  _display.drawLine(_display.width() - 1, 0, 0, i, SSD1306_WHITE);
-  _display.setTextSize(1); // Draw 2X-scale text
-  _display.setTextColor(SSD1306_WHITE);
-  _display.setCursor(0, 0);
-  _display.println(text);
-  _display.display();
+
+  _display.setTitle("midi monitor");
 }
 
 

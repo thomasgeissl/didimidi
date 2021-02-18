@@ -4,6 +4,13 @@
 
 class Slot {
   public:
+    bool begin(int ledPin, int gateDacPin, int gatePin, bool hasTriggerAndVelocity) {
+//      _trigger.begin(triggerPin);
+//      _gate.begin(gatePin, ledPin);
+//      _pitchOrCcPin = pitchOrCcPin;
+//      _velocityOrValuePin = velocityOrValuePin;
+      return true;
+    }
     bool begin(int ledPin, int triggerPin, int gatePin, int pitchOrCcPin, int velocityOrValuePin) {
       _trigger.begin(triggerPin);
       _gate.begin(gatePin, ledPin);

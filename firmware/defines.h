@@ -1,5 +1,3 @@
-#pragma once
-
 #define NUMBEROFSLOTS 4
 #define PIN_CLOCK 33
 #define PIN_BACKBUTTON 32
@@ -18,3 +16,13 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
+
+#define PIN_DAC_0 27
+#define PIN_DAC_1 28
+#define PIN_DAC_2 29
+#define PIN_DAC_3 30
+#define PIN_DAC_4 31
+#define PIN_DAC_5 32
+
+
+#define AD5754_VOLTAGE_SELECTION 5 //[-10V, +10V]
